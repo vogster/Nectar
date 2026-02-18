@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nectar | P2P Sharing</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+  <aside>
+    <div class="brand">Nectar</div>
+    <nav>
+      <ul>
+        <li class="active" onclick="showView('dashboard')">
+          <i class="fa-solid fa-gauge-high"></i>
+          Dashboard
+        </li>
+        <li onclick="openModal('seed')">
+          <i class="fa-solid fa-arrow-up-from-bracket"></i>
+          New Seed
+        </li>
+        <li onclick="openModal('download')">
+          <i class="fa-solid fa-arrow-down-to-bracket"></i>
+          Download Key
+        </li>
+      </ul>
+    </nav>
+  </aside>
+
+  <main>
+    <header>
+      <h1 id="view-title">Active Transfers</h1>
+      <button class="btn-primary" onclick="openModal('seed')">
+        <i class="fa-solid fa-plus"></i> Create Torrent
+      </button>
+    </header>
+
+    <div id="torrent-list" class="torrent-grid">
+      <!-- Torrents will be injected here -->
+      <div class="empty-state"
+        style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 4rem;">
+        <i class="fa-solid fa-cloud-arrow-down" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+        <p>No active transfers. Seed a file to get started.</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- Seed Modal -->
+  <div id="modal-seed" class="modal">
+    <div class="modal-content">
+      <h2>Seed New File</h2>
+      <div id="seed-form-content">
+        <p style="color: var(--text-secondary); margin-bottom: 1rem;">Enter the absolute path to the file you want to
+          share.</p>
+        <div style="display: flex; gap: 10px;">
+          <input type="text" id="seed-path" placeholder="Select a file..." readonly>
+          <button class="btn-secondary" onclick="browseFile()" style="height: 50px; white-space: nowrap;">
+            <i class="fa-solid fa-folder-open"></i> Browse
+          </button>
+        </div>
+        <div class="modal-actions" style="margin-top: 1.5rem;">
+          <button class="btn-secondary" onclick="closeModal('seed')">Cancel</button>
+          <button class="btn-primary" onclick="handleSeed()">Start Seeding</button>
+        </div>
+      </div>
+      <div id="seed-result"
+        style="display: none; background: rgba(0, 242, 255, 0.05); padding: 1.5rem; border-radius: 12px; margin-top: 1.5rem; border: 1px solid rgba(0, 242, 255, 0.2);">
+        <p style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--accent-blue);">Success! Share this key:</p>
+        <div class="key-display" id="generated-key" title="Click to copy"></div>
+        <button class="btn-secondary" onclick="resetSeedModal()" style="margin-top: 1rem; width: 100%;">Seed Another
+          File</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Download Modal -->
+  <div id="modal-download" class="modal">
+    <div class="modal-content">
+      <h2>Download from Key</h2>
+      <input type="text" id="download-key" placeholder="Enter 64-character public key">
+      <div style="display: flex; gap: 10px;">
+        <input type="text" id="save-path" placeholder="Select save directory..." readonly>
+        <button class="btn-secondary" onclick="browseDirectory()" style="height: 50px; white-space: nowrap;">
+          <i class="fa-solid fa-folder-open"></i> Browse
+        </button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeModal('download')">Cancel</button>
+        <button class="btn-primary" onclick="handleDownload()">Start Download</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>
