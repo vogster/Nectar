@@ -1,5 +1,7 @@
 # 🍯 Nectar
 
+![Nectar Interface](images/screen1.png)
+
 **Nectar** is a lightweight, high-performance P2P file sharing desktop application built on the **Hypercore Protocol** stack. It allows users to seed files and download them using secure 64-character public keys, featuring a modern "glassmorphism" interface.
 
 > [!IMPORTANT]
@@ -36,7 +38,7 @@ Nectar is built using the following state-of-the-art technologies:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-username/nectar.git
+   git clone https://github.com/vogster/nectar.git
    cd nectar
    ```
 
