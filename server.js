@@ -120,9 +120,36 @@ export async function startServer() {
     return new Promise((resolve) => {
         server.listen(PORT, () => {
             console.log(`Server running at http://localhost:${PORT}`)
-            resolve({ server, manager })
+            resolve({ server, manager, wss })
         })
     })
+}
+
+export async function stopServer(serverData) {
+    if (!serverData) return
+    
+    const { server, manager, wss } = serverData
+    
+    console.log('[Stop] Stopping server...')
+    
+    // Stop WebSocket server
+    if (wss) {
+        wss.clients.forEach(client => client.close())
+        await new Promise(resolve => wss.close(resolve))
+        console.log('[Stop] WebSocket server closed')
+    }
+    
+    // Stop TorrentManager
+    if (manager) {
+        await manager.stop()
+        console.log('[Stop] TorrentManager stopped')
+    }
+    
+    // Stop HTTP server
+    if (server) {
+        await new Promise(resolve => server.close(resolve))
+        console.log('[Stop] HTTP server closed')
+    }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

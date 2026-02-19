@@ -1,12 +1,13 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { startServer } from './server.js'
+import { startServer, stopServer } from './server.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 let mainWindow
 let p2pServer
+let isShuttingDown = false
 
 async function createWindow() {
     // Start the P2P backend server
@@ -60,10 +61,21 @@ async function createWindow() {
 app.on('ready', createWindow)
 
 app.on('window-all-closed', async function () {
-    if (p2pServer && p2pServer.manager) {
-        await p2pServer.manager.stop()
-    }
-    if (process.platform !== 'darwin') {
+    if (isShuttingDown) return
+    isShuttingDown = true
+    // Stop the server and cleanup all resources
+    await stopServer(p2pServer)
+    app.quit()
+})
+
+app.on('before-quit', async function (event) {
+    // Ensure cleanup on explicit quit (e.g., Cmd+Q on macOS)
+    if (isShuttingDown) return
+    isShuttingDown = true
+    
+    if (p2pServer) {
+        event.preventDefault()
+        await stopServer(p2pServer)
         app.quit()
     }
 })

@@ -314,8 +314,8 @@ async function main() {
     const hasMultipleFiles = contentEntries.length > 1
     const hasRootFile = contentEntries.some(e => e.key === '/file')
 
-    // Используем название из метаданных или ключ
-    const torrentName = metadata?.name || `downloaded-${argumentKey.slice(0, 6)}`
+    // Используем название из метаданных, sourceName или полный ключ
+    const torrentName = metadata?.name || metadata?.sourceName || `downloaded-${argumentKey}`
 
     if (hasMultipleFiles || !hasRootFile) {
       // Скачивание директории со структурой в папку с названием раздачи
@@ -324,7 +324,7 @@ async function main() {
       await downloadAll(drive, finalSavePath, metadata)
     } else {
       // Скачивание одного файла
-      const fileName = metadata?.sourceName || `downloaded-${argumentKey.slice(0, 6)}`
+      const fileName = metadata?.sourceName || `downloaded-${argumentKey}`
       const finalSavePath = path.join(baseSaveDir, fileName)
       console.log(`[Download] Скачивание файла → ${finalSavePath}`)
       const readStream = drive.createReadStream('/file')
