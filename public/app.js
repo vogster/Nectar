@@ -48,13 +48,21 @@ function renderTorrents(torrents) {
                 typeLabel = 'Downloading Dir';
                 typeIcon = 'fa-folder-arrow-down';
                 break;
+            case 'metadata-fetching':
+                typeLabel = 'Fetching Metadata';
+                typeIcon = 'fa-spinner fa-spin';
+                break;
+            case 'metadata-ready':
+                typeLabel = 'Metadata Ready';
+                typeIcon = 'fa-list-check';
+                break;
             default:
                 typeLabel = torrent.type;
                 typeIcon = 'fa-circle-question';
         }
 
-        const fileInfo = torrent.fileCount 
-            ? `${torrent.fileCount} file${torrent.fileCount > 1 ? 's' : ''}` 
+        const fileInfo = torrent.fileCount
+            ? `${torrent.fileCount} file${torrent.fileCount > 1 ? 's' : ''}`
             : formatBytes(torrent.size);
 
         card.innerHTML = `
@@ -85,6 +93,22 @@ function renderTorrents(torrents) {
       <div class="key-display-small" onclick="copyKey('${torrent.key}')" title="Click to copy key">
         ${torrent.key.slice(0, 8)}...${torrent.key.slice(-8)}
       </div>
+      
+      ${torrent.type === 'metadata-ready' ? `
+        <div class="file-selection-list">
+          ${torrent.files.map(file => `
+            <div class="file-item">
+              <input type="checkbox" id="file-${torrent.key}-${file.path}" data-path="${file.path}" checked>
+              <label for="file-${torrent.key}-${file.path}" class="file-name">${file.path === '/file' ? (torrent.name || 'file') : file.path.slice(1)}</label>
+              <span class="file-size">${formatBytes(file.size)}</span>
+            </div>
+          `).join('')}
+        </div>
+        <button class="btn-start-download" onclick="confirmDownload('${torrent.key}')">
+          Start Download
+        </button>
+      ` : ''}
+
       ${torrent.error ? `<div class="error" style="color: #ff4d4d; font-size: 0.8rem; margin-top: 10px;">${torrent.error}</div>` : ''}
     `;
     });
@@ -147,7 +171,7 @@ function closeModal(type) {
 async function handleSeed() {
     const path = document.getElementById('seed-path').value;
     const name = document.getElementById('seed-name').value.trim() || null;
-    
+
     if (!path) return alert('Please select a file or directory');
 
     try {
@@ -196,6 +220,25 @@ async function handleDownload() {
     }
 }
 
+async function confirmDownload(key) {
+    const card = document.getElementById(`torrent-${key}`);
+    const checkboxes = card.querySelectorAll('.file-selection-list input[type="checkbox"]:checked');
+    const selectedFiles = Array.from(checkboxes).map(cb => cb.dataset.path);
+
+    if (selectedFiles.length === 0) return alert('Please select at least one file to download');
+
+    try {
+        const response = await fetch('/api/confirm-download', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key, selectedFiles })
+        });
+        const result = await response.json();
+        if (!result.success) alert('Error: ' + result.error);
+    } catch (err) {
+        alert('Failed to start download');
+    }
+}
 async function browseFile() {
     const filePath = await window.electronAPI.selectFile();
     if (filePath) {
@@ -221,11 +264,11 @@ async function browseSeedPath() {
 function toggleSeedType() {
     const seedType = document.querySelector('input[name="seed-type"]:checked').value;
     const placeholder = seedType === 'directory' ? 'Select a directory...' : 'Select a file...';
-    const description = seedType === 'directory' 
-        ? 'Select a directory to share with all its contents via P2P.' 
+    const description = seedType === 'directory'
+        ? 'Select a directory to share with all its contents via P2P.'
         : 'Select a file to share via P2P.';
     const browseBtnText = seedType === 'directory' ? 'Browse Folder' : 'Browse File';
-    
+
     document.getElementById('seed-path').placeholder = placeholder;
     document.getElementById('seed-type-description').textContent = description;
     document.getElementById('browse-btn-text').textContent = browseBtnText;

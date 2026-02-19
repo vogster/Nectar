@@ -42,6 +42,18 @@ export async function startServer() {
         }
     })
 
+    app.post('/api/confirm-download', async (req, res) => {
+        try {
+            const { key, selectedFiles } = req.body
+            if (!key) return res.status(400).json({ success: false, error: 'Key is required' })
+            await manager.confirmDownload(key, selectedFiles)
+            res.json({ success: true })
+        } catch (err) {
+            console.error('[API] Confirm download error:', err.message)
+            res.status(500).json({ success: false, error: err.message })
+        }
+    })
+
     app.get('/api/torrents', (req, res) => {
         res.json(manager.getTorrents())
     })
