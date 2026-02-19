@@ -142,6 +142,7 @@ async function seedDirectory(drive, sourceDir) {
 
 async function main() {
   const arg = process.argv[2]
+  const nameArg = process.argv[3] // Опциональное название раздачи
 
   // Определяем режим по виду аргумента:
   // hex-строка 64 символа → режим скачивания
@@ -175,8 +176,10 @@ async function main() {
     console.log('--- РЕЖИМ СОЗДАТЕЛЯ ---')
 
     const sourcePath = arg
+    const customName = nameArg && !/^[0-9a-f]{64}$/i.test(nameArg) ? nameArg : null
+    
     if (!sourcePath) {
-      console.error('Укажите путь к файлу или директории: node index.js /path/to/file-or-dir')
+      console.error('Укажите путь к файлу или директории: node index.js /path/to/file-or-dir [name]')
       process.exit(1)
     }
     if (!fs.existsSync(sourcePath)) {
@@ -202,10 +205,28 @@ async function main() {
     })
 
     const stat = fs.statSync(sourcePath)
-    
+    const torrentName = customName || path.basename(sourcePath)
+
+    // Записываем метаданные и ждём завершения
+    console.log(`[Seed] Writing metadata...`)
+    const metadata = {
+      name: torrentName,
+      sourceType: stat.isDirectory() ? 'directory' : 'file',
+      sourceName: path.basename(sourcePath),
+      createdAt: new Date().toISOString()
+    }
+    await new Promise((resolve, reject) => {
+      const metadataStream = drive.createWriteStream('/.metadata.json')
+      metadataStream.on('finish', resolve)
+      metadataStream.on('error', reject)
+      metadataStream.write(JSON.stringify(metadata, null, 2))
+      metadataStream.end()
+    })
+
     if (stat.isDirectory()) {
       // Раздача директории
       console.log(`[Seed] Раздача директории: ${sourcePath}`)
+      console.log(`[Seed] Название: ${torrentName}`)
       await seedDirectory(drive, sourcePath)
     } else {
       // Раздача одного файла
@@ -250,8 +271,8 @@ async function main() {
 
     console.log('Поиск пиров...')
 
-    // Опциональный третий аргумент — куда сохранить (файл или директорию)
-    const savePath = process.argv[3] || './downloaded'
+    // Опциональный третий аргумент — базовая директория для сохранения
+    const baseSaveDir = process.argv[3] || './downloaded'
 
     console.log('Жду подключения к пиру...')
     try {
@@ -270,23 +291,48 @@ async function main() {
       return
     }
 
+    // Читаем метаданные
+    let metadata = null
+    try {
+      const metadataEntry = await drive.entry('/.metadata.json')
+      if (metadataEntry) {
+        const metadataStream = drive.createReadStream('/.metadata.json')
+        const metadataChunks = []
+        for await (const chunk of metadataStream) {
+          metadataChunks.push(chunk)
+        }
+        metadata = JSON.parse(Buffer.concat(metadataChunks).toString())
+        console.log(`[Download] Название раздачи: ${metadata.name}`)
+      }
+    } catch (err) {
+      console.log('[Download] Метаданные не найдены')
+    }
+
     // Определяем, что это: один файл или директория
-    const hasMultipleFiles = entries.length > 1
-    const hasRootFile = entries.some(e => e.key === '/file')
+    // Исключаем .metadata.json из списка
+    const contentEntries = entries.filter(e => e.key !== '/.metadata.json')
+    const hasMultipleFiles = contentEntries.length > 1
+    const hasRootFile = contentEntries.some(e => e.key === '/file')
+
+    // Используем название из метаданных или ключ
+    const torrentName = metadata?.name || `downloaded-${argumentKey.slice(0, 6)}`
 
     if (hasMultipleFiles || !hasRootFile) {
-      // Скачивание директории со структурой
-      console.log(`[Download] Скачивание директории → ${savePath}`)
-      await downloadAll(drive, savePath)
+      // Скачивание директории со структурой в папку с названием раздачи
+      const finalSavePath = path.join(baseSaveDir, torrentName)
+      console.log(`[Download] Скачивание директории → ${finalSavePath}`)
+      await downloadAll(drive, finalSavePath, metadata)
     } else {
       // Скачивание одного файла
-      console.log(`[Download] Скачивание файла → ${savePath}`)
+      const fileName = metadata?.sourceName || `downloaded-${argumentKey.slice(0, 6)}`
+      const finalSavePath = path.join(baseSaveDir, fileName)
+      console.log(`[Download] Скачивание файла → ${finalSavePath}`)
       const readStream = drive.createReadStream('/file')
-      const writeStream = fs.createWriteStream(savePath)
+      const writeStream = fs.createWriteStream(finalSavePath)
       await pipeline(readStream, writeStream)
     }
 
-    console.log(`\n✅ Готово! Файлы сохранены: ${savePath}`)
+    console.log(`\n✅ Готово! Файлы сохранены: ${baseSaveDir}/${torrentName}`)
     await shutdown('done')
   }
 }

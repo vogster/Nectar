@@ -20,9 +20,9 @@ export async function startServer() {
     // API Endpoints
     app.post('/api/seed', async (req, res) => {
         try {
-            const { path: sourcePath } = req.body
+            const { path: sourcePath, name } = req.body
             if (!sourcePath) return res.status(400).json({ success: false, error: 'Path is required' })
-            const key = await manager.seed(sourcePath)
+            const key = await manager.seed(sourcePath, name)
             res.json({ success: true, key })
         } catch (err) {
             console.error('[API] Seed error:', err.message)

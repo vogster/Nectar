@@ -121,6 +121,7 @@ async function handleRemove(key) {
 function resetSeedModal() {
     document.getElementById('seed-result').style.display = 'none';
     document.getElementById('seed-path').value = '';
+    document.getElementById('seed-name').value = '';
     document.getElementById('seed-form-content').style.display = 'block';
 }
 
@@ -145,13 +146,15 @@ function closeModal(type) {
 
 async function handleSeed() {
     const path = document.getElementById('seed-path').value;
+    const name = document.getElementById('seed-name').value.trim() || null;
+    
     if (!path) return alert('Please select a file or directory');
 
     try {
         const response = await fetch('/api/seed', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ path })
+            body: JSON.stringify({ path, name })
         });
         const result = await response.json();
 

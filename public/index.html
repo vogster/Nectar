@@ -70,6 +70,12 @@
             <i class="fa-solid fa-folder-open"></i> <span id="browse-btn-text">Browse File</span>
           </button>
         </div>
+        <div style="margin-bottom: 1.5rem;">
+          <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">
+            <i class="fa-solid fa-tag"></i> Torrent Name (optional)
+          </label>
+          <input type="text" id="seed-name" placeholder="Leave empty to use filename" style="margin-bottom: 0;">
+        </div>
         <div class="modal-actions" style="margin-top: 1.5rem;">
           <button class="btn-secondary" onclick="closeModal('seed')">Cancel</button>
           <button class="btn-primary" onclick="handleSeed()">Start Seeding</button>
