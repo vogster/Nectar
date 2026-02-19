@@ -14,17 +14,9 @@
     <div class="brand">Nectar</div>
     <nav>
       <ul>
-        <li class="active" onclick="showView('dashboard')">
-          <i class="fa-solid fa-gauge-high"></i>
-          Dashboard
-        </li>
-        <li onclick="openModal('seed')">
-          <i class="fa-solid fa-arrow-up-from-bracket"></i>
-          New Seed
-        </li>
-        <li onclick="openModal('download')">
-          <i class="fa-solid fa-arrow-down-to-bracket"></i>
-          Download Key
+        <li class="active" onclick="location.reload()">
+          <i class="fa-solid fa-list-ul"></i>
+          Transfers
         </li>
       </ul>
     </nav>
@@ -33,9 +25,14 @@
   <main>
     <header>
       <h1 id="view-title">Active Transfers</h1>
-      <button class="btn-primary" onclick="openModal('seed')">
-        <i class="fa-solid fa-plus"></i> Create Torrent
-      </button>
+      <div class="header-actions" style="display: flex; gap: 12px;">
+        <button class="btn-secondary" onclick="openModal('download')">
+          <i class="fa-solid fa-key"></i> Add via Key
+        </button>
+        <button class="btn-primary" onclick="openModal('seed')">
+          <i class="fa-solid fa-plus"></i> Create Torrent
+        </button>
+      </div>
     </header>
 
     <div id="torrent-list" class="torrent-grid">
@@ -63,7 +60,8 @@
             <i class="fa-solid fa-folder"></i> Directory
           </label>
         </div>
-        <p style="color: var(--text-secondary); margin-bottom: 1rem;" id="seed-type-description">Select a file to share via P2P.</p>
+        <p style="color: var(--text-secondary); margin-bottom: 1rem;" id="seed-type-description">Select a file to share
+          via P2P.</p>
         <div style="display: flex; gap: 10px;">
           <input type="text" id="seed-path" placeholder="Select a file..." readonly>
           <button class="btn-secondary" onclick="browseSeedPath()" style="height: 50px; white-space: nowrap;">
