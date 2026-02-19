@@ -5,6 +5,7 @@ package-lock.json
 # Storage & Data
 nectar-data/
 pear-data/
+nectar-data-second/
 storage/
 
 # Desktop / OS Files
@@ -25,3 +26,4 @@ yarn-error.log*
 # Build
 dist/
 build/
+run-second.sh

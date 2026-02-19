@@ -30,9 +30,32 @@ function renderTorrents(torrents) {
             torrentList.appendChild(card);
         }
 
-        const typeLabel = torrent.type === 'seeding' ?
-            '<i class="fa-solid fa-arrow-up"></i> Seeding' :
-            '<i class="fa-solid fa-arrow-down"></i> Downloading';
+        let typeLabel, typeIcon;
+        switch (torrent.type) {
+            case 'seeding':
+                typeLabel = 'Seeding';
+                typeIcon = 'fa-arrow-up';
+                break;
+            case 'seeding-dir':
+                typeLabel = 'Seeding Dir';
+                typeIcon = 'fa-folder';
+                break;
+            case 'downloading':
+                typeLabel = 'Downloading';
+                typeIcon = 'fa-arrow-down';
+                break;
+            case 'downloading-dir':
+                typeLabel = 'Downloading Dir';
+                typeIcon = 'fa-folder-arrow-down';
+                break;
+            default:
+                typeLabel = torrent.type;
+                typeIcon = 'fa-circle-question';
+        }
+
+        const fileInfo = torrent.fileCount 
+            ? `${torrent.fileCount} file${torrent.fileCount > 1 ? 's' : ''}` 
+            : formatBytes(torrent.size);
 
         card.innerHTML = `
       <div class="torrent-info">
@@ -43,8 +66,8 @@ function renderTorrents(torrents) {
           </button>
         </div>
         <div class="torrent-meta">
-          <span>${typeLabel}</span>
-          <span>${formatBytes(torrent.size)}</span>
+          <span><i class="fa-solid ${typeIcon}"></i> ${typeLabel}</span>
+          <span>${fileInfo}</span>
         </div>
       </div>
       <div class="progress-container">
@@ -121,14 +144,14 @@ function closeModal(type) {
 }
 
 async function handleSeed() {
-    const filePath = document.getElementById('seed-path').value;
-    if (!filePath) return alert('Please enter a file path');
+    const path = document.getElementById('seed-path').value;
+    if (!path) return alert('Please select a file or directory');
 
     try {
         const response = await fetch('/api/seed', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ filePath })
+            body: JSON.stringify({ path })
         });
         const result = await response.json();
 
@@ -182,6 +205,27 @@ async function browseDirectory() {
     if (dirPath) {
         document.getElementById('save-path').value = dirPath;
     }
+}
+
+async function browseSeedPath() {
+    const seedType = document.querySelector('input[name="seed-type"]:checked').value;
+    const path = await window.electronAPI.selectPath({ allowDirectory: seedType === 'directory' });
+    if (path) {
+        document.getElementById('seed-path').value = path;
+    }
+}
+
+function toggleSeedType() {
+    const seedType = document.querySelector('input[name="seed-type"]:checked').value;
+    const placeholder = seedType === 'directory' ? 'Select a directory...' : 'Select a file...';
+    const description = seedType === 'directory' 
+        ? 'Select a directory to share with all its contents via P2P.' 
+        : 'Select a file to share via P2P.';
+    const browseBtnText = seedType === 'directory' ? 'Browse Folder' : 'Browse File';
+    
+    document.getElementById('seed-path').placeholder = placeholder;
+    document.getElementById('seed-type-description').textContent = description;
+    document.getElementById('browse-btn-text').textContent = browseBtnText;
 }
 
 window.onclick = function (event) {

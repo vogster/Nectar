@@ -42,7 +42,15 @@ async function createWindow() {
         return filePaths[0]
     })
 
-    mainWindow.loadURL('http://localhost:3000')
+    ipcMain.handle('dialog:selectPath', async (event, options = {}) => {
+        const { canceled, filePaths } = await dialog.showOpenDialog({
+            properties: options.allowDirectory ? ['openDirectory', 'openFile'] : ['openFile']
+        })
+        if (canceled) return null
+        return filePaths[0]
+    })
+
+    mainWindow.loadURL(`http://localhost:${process.env.PORT || 3000}`)
 
     mainWindow.on('closed', function () {
         mainWindow = null

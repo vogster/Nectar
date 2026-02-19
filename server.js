@@ -11,7 +11,8 @@ const server = http.createServer(app)
 const wss = new WebSocketServer({ server })
 
 export async function startServer() {
-    const manager = new TorrentManager()
+    const storagePath = process.env.NECTAR_DATA || './nectar-data'
+    const manager = new TorrentManager(storagePath)
 
     app.use(express.json())
     app.use(express.static('public'))
@@ -19,9 +20,9 @@ export async function startServer() {
     // API Endpoints
     app.post('/api/seed', async (req, res) => {
         try {
-            const { filePath } = req.body
-            if (!filePath) return res.status(400).json({ success: false, error: 'Path is required' })
-            const key = await manager.seed(filePath)
+            const { path: sourcePath } = req.body
+            if (!sourcePath) return res.status(400).json({ success: false, error: 'Path is required' })
+            const key = await manager.seed(sourcePath)
             res.json({ success: true, key })
         } catch (err) {
             console.error('[API] Seed error:', err.message)

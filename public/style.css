@@ -291,3 +291,35 @@ input:focus {
   background: rgba(0, 242, 255, 0.1);
   color: var(--accent-blue);
 }
+
+/* Toggle Container for Seed Type */
+.toggle-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex: 1;
+  justify-content: center;
+}
+
+.toggle-container:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(0, 242, 255, 0.3);
+}
+
+.toggle-container input[type="radio"] {
+  margin: 0;
+  width: auto;
+  accent-color: var(--accent-blue);
+}
+
+.toggle-container:has(input:checked) {
+  background: rgba(0, 242, 255, 0.15);
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
