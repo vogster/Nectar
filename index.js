@@ -3,16 +3,9 @@ import Hyperdrive from 'hyperdrive'
 import Corestore from 'corestore'
 import b4a from 'b4a'
 import fs from 'fs'
+import path from 'path'
 import { pipeline } from 'stream/promises'
-
-const store = new Corestore('./pear-data')
-const swarm = new Hyperswarm()
-
-swarm.on('connection', (conn) => {
-  console.log('--- Новое подключение! ---')
-  conn.on('error', (err) => console.error('Ошибка соединения:', err.message))
-  store.replicate(conn)
-})
+import crypto from 'crypto'
 
 // Ожидание подключения хотя бы одного пира
 function waitForPeer(swarm, timeout = 30000) {
@@ -49,24 +42,24 @@ async function main() {
   // hex-строка 64 символа → режим скачивания
   // всё остальное (путь к файлу) → режим раздачи
   const isKey = arg && /^[0-9a-f]{64}$/i.test(arg)
-
   const argumentKey = isKey ? arg : null
-  const key = argumentKey ? b4a.from(argumentKey, 'hex') : null
 
-  const drive = new Hyperdrive(store, key)
-  await drive.ready()
-
-  const discovery = swarm.join(drive.discoveryKey, { server: true, client: true })
-  await discovery.flushed()
-  console.log('Поиск пиров...')
+  const swarm = new Hyperswarm()
 
   // Graceful shutdown
+  let store = null
+  let drive = null
+  let discovery = null
+
   const shutdown = async (reason) => {
     console.log(`\nЗавершаю работу (${reason})...`)
+    if (discovery) await discovery.destroy()
+    if (drive) await drive.close()
+    if (store) await store.close()
     await swarm.destroy()
-    await store.close()
     process.exit(0)
   }
+
   process.on('SIGINT', () => shutdown('SIGINT'))
   process.on('SIGTERM', () => shutdown('SIGTERM'))
 
@@ -85,6 +78,23 @@ async function main() {
       console.error(`Файл не найден: ${sourceFile}`)
       process.exit(1)
     }
+
+    // Создаём уникальное хранилище для этой раздачи
+    const sessionId = crypto.randomBytes(16).toString('hex')
+    const sessionPath = path.join('./pear-data', 'sessions', sessionId)
+    store = new Corestore(sessionPath)
+    drive = new Hyperdrive(store)
+    await drive.ready()
+
+    const discoveryKey = drive.discoveryKey
+    discovery = swarm.join(discoveryKey, { server: true, client: true })
+    await discovery.flushed()
+
+    swarm.on('connection', (conn) => {
+      console.log('--- Новое подключение! ---')
+      conn.on('error', (err) => console.error('Ошибка соединения:', err.message))
+      store.replicate(conn)
+    })
 
     const stat = fs.statSync(sourceFile)
     console.log(`Добавляю файл (${(stat.size / 1024 / 1024).toFixed(1)} MB) через стрим...`)
@@ -106,6 +116,26 @@ async function main() {
     // РЕЖИМ СКАЧИВАНИЯ
     // -------------------------
     console.log('--- РЕЖИМ СКАЧИВАНИЯ ---')
+
+    const key = b4a.from(argumentKey, 'hex')
+
+    // Создаём уникальное хранилище для этой загрузки
+    const sessionId = crypto.randomBytes(16).toString('hex')
+    const sessionPath = path.join('./pear-data', 'sessions', sessionId)
+    store = new Corestore(sessionPath)
+    drive = new Hyperdrive(store, key)
+    await drive.ready()
+
+    discovery = swarm.join(drive.discoveryKey, { server: true, client: true })
+    await discovery.flushed()
+
+    swarm.on('connection', (conn) => {
+      console.log('--- Новое подключение! ---')
+      conn.on('error', (err) => console.error('Ошибка соединения:', err.message))
+      store.replicate(conn)
+    })
+
+    console.log('Поиск пиров...')
 
     // Опциональный третий аргумент — куда сохранить файл
     const savePath = process.argv[3] || './downloaded-file'
@@ -140,7 +170,7 @@ async function main() {
 
 main().catch(async (err) => {
   console.error('Критическая ошибка:', err)
-  await swarm.destroy()
-  await store.close()
+  await swarm?.destroy()
+  await store?.close()
   process.exit(1)
 })
