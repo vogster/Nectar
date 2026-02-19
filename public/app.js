@@ -1,6 +1,38 @@
 const ws = new WebSocket(`ws://${window.location.host}`);
 const torrentList = document.getElementById('torrent-list');
 const emptyState = torrentList.querySelector('.empty-state');
+const toastContainer = document.getElementById('toast-container');
+
+// Toast notification system
+function showToast(message, type = 'info', duration = 5000) {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    
+    const icons = {
+        success: 'fa-circle-check',
+        error: 'fa-circle-exclamation',
+        warning: 'fa-triangle-exclamation',
+        info: 'fa-circle-info'
+    };
+    
+    toast.innerHTML = `
+        <i class="fa-solid ${icons[type]} toast-icon"></i>
+        <span class="toast-message">${message}</span>
+        <button class="toast-close" onclick="this.parentElement.remove()">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+    `;
+    
+    toastContainer.appendChild(toast);
+    
+    // Auto-remove after duration
+    if (duration > 0) {
+        setTimeout(() => {
+            toast.classList.add('hiding');
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    }
+}
 
 ws.onmessage = (event) => {
     const message = JSON.parse(event.data);
@@ -239,7 +271,7 @@ function toggleFolderCollapse(toggleEl) {
 
 function copyKey(key) {
     navigator.clipboard.writeText(key);
-    alert('Key copied to clipboard!');
+    showToast('Key copied to clipboard!', 'success', 3000);
 }
 
 async function handleRemove(key) {
@@ -252,9 +284,9 @@ async function handleRemove(key) {
             body: JSON.stringify({ key })
         });
         const result = await response.json();
-        if (!result.success) alert('Error: ' + result.error);
+        if (!result.success) showToast(result.error, 'error');
     } catch (err) {
-        alert('Failed to remove torrent');
+        showToast('Failed to remove torrent', 'error');
     }
 }
 
@@ -288,7 +320,7 @@ async function handleSeed() {
     const path = document.getElementById('seed-path').value;
     const name = document.getElementById('seed-name').value.trim() || null;
 
-    if (!path) return alert('Please select a file or directory');
+    if (!path) return showToast('Please select a file or directory', 'warning');
 
     try {
         const response = await fetch('/api/seed', {
@@ -304,11 +336,12 @@ async function handleSeed() {
             const keyDiv = document.getElementById('generated-key');
             keyDiv.textContent = result.key;
             keyDiv.onclick = () => copyKey(result.key);
+            showToast('Torrent created successfully!', 'success', 3000);
         } else {
-            alert('Error: ' + result.error);
+            showToast(result.error, 'error');
         }
     } catch (err) {
-        alert('Failed to connect to server');
+        showToast('Failed to connect to server', 'error');
     }
 }
 
@@ -316,7 +349,7 @@ async function handleDownload() {
     const key = document.getElementById('download-key').value;
     const savePath = document.getElementById('save-path').value || './downloads';
 
-    if (!key) return alert('Please enter a key');
+    if (!key) return showToast('Please enter a key', 'warning');
 
     try {
         const response = await fetch('/api/download', {
@@ -328,11 +361,12 @@ async function handleDownload() {
 
         if (result.success) {
             closeModal('download');
+            showToast('Download started!', 'success', 3000);
         } else {
-            alert('Error: ' + result.error);
+            showToast(result.error, 'error');
         }
     } catch (err) {
-        alert('Failed to connect to server');
+        showToast('Failed to connect to server', 'error');
     }
 }
 
@@ -341,7 +375,7 @@ async function confirmDownload(key) {
     const checkboxes = card.querySelectorAll('.file-selection-list input[type="checkbox"]:checked');
     const selectedFiles = Array.from(checkboxes).map(cb => cb.dataset.path);
 
-    if (selectedFiles.length === 0) return alert('Please select at least one file to download');
+    if (selectedFiles.length === 0) return showToast('Please select at least one file to download', 'warning');
 
     try {
         const response = await fetch('/api/confirm-download', {
@@ -350,11 +384,12 @@ async function confirmDownload(key) {
             body: JSON.stringify({ key, selectedFiles })
         });
         const result = await response.json();
-        if (!result.success) alert('Error: ' + result.error);
+        if (!result.success) showToast(result.error, 'error');
     } catch (err) {
-        alert('Failed to start download');
+        showToast('Failed to start download', 'error');
     }
 }
+
 async function syncSeed(key) {
     try {
         const response = await fetch('/api/sync-seed', {
@@ -363,9 +398,9 @@ async function syncSeed(key) {
             body: JSON.stringify({ key })
         });
         const result = await response.json();
-        if (!result.success) alert('Error: ' + result.error);
+        if (!result.success) showToast(result.error, 'error');
     } catch (err) {
-        alert('Failed to sync seed');
+        showToast('Failed to sync seed', 'error');
     }
 }
 
@@ -412,9 +447,9 @@ async function syncDownload(key) {
             body: JSON.stringify({ key })
         });
         const result = await response.json();
-        if (!result.success) alert('Error: ' + result.error);
+        if (!result.success) showToast(result.error, 'error');
     } catch (err) {
-        alert('Failed to sync download');
+        showToast('Failed to sync download', 'error');
     }
 }
 
