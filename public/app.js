@@ -56,6 +56,10 @@ function renderTorrents(torrents) {
                 typeLabel = 'Metadata Ready';
                 typeIcon = 'fa-list-check';
                 break;
+            case 'syncing':
+                typeLabel = 'Syncing Updates...';
+                typeIcon = 'fa-sync fa-spin';
+                break;
             default:
                 typeLabel = torrent.type;
                 typeIcon = 'fa-circle-question';
@@ -93,6 +97,21 @@ function renderTorrents(torrents) {
       <div class="key-display-small" onclick="copyKey('${torrent.key}')" title="Click to copy key">
         ${torrent.key.slice(0, 8)}...${torrent.key.slice(-8)}
       </div>
+
+      ${torrent.hasLocalChanges ? `
+        <div class="update-badge badge-local">
+          <i class="fa-solid fa-cloud-arrow-up"></i> Local changes detected
+          <button class="btn-sync" onclick="syncSeed('${torrent.key}')">Publish</button>
+        </div>
+      ` : ''}
+
+      ${torrent.hasRemoteUpdate ? `
+        <div class="update-badge badge-remote">
+          <i class="fa-solid fa-cloud-arrow-down"></i> Update available (v${torrent.remoteVersion})
+          <button class="btn-sync" onclick="showSyncDiff('${torrent.key}')">Review</button>
+        </div>
+        <div id="diff-${torrent.key}" class="sync-diff-container" style="display: none;"></div>
+      ` : ''}
       
       ${torrent.type === 'metadata-ready' ? `
         <div class="file-selection-list">
@@ -336,6 +355,69 @@ async function confirmDownload(key) {
         alert('Failed to start download');
     }
 }
+async function syncSeed(key) {
+    try {
+        const response = await fetch('/api/sync-seed', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key })
+        });
+        const result = await response.json();
+        if (!result.success) alert('Error: ' + result.error);
+    } catch (err) {
+        alert('Failed to sync seed');
+    }
+}
+
+async function showSyncDiff(key) {
+    const diffContainer = document.getElementById(`diff-${key}`);
+    if (diffContainer.style.display === 'block') {
+        diffContainer.style.display = 'none';
+        return;
+    }
+
+    try {
+        diffContainer.innerHTML = '<div class="diff-loading"><i class="fa-solid fa-spinner fa-spin"></i> Calculating changes...</div>';
+        diffContainer.style.display = 'block';
+
+        const response = await fetch(`/api/sync-diff?key=${key}`);
+        const result = await response.json();
+
+        if (result.success) {
+            if (result.diff.length === 0) {
+                diffContainer.innerHTML = '<div class="diff-empty">No file changes detected (metadata update only).</div>' +
+                    `<button class="btn-sync-confirm" onclick="syncDownload('${key}')">Apply Metadata Update</button>`;
+            } else {
+                let html = '<div class="diff-title">Files to update:</div><ul class="diff-list">';
+                result.diff.forEach(file => {
+                    html += `<li><i class="fa-solid fa-file-pen"></i> ${file.path} <span class="diff-size">(${formatBytes(file.size)})</span></li>`;
+                });
+                html += '</ul>';
+                html += `<button class="btn-sync-confirm" onclick="syncDownload('${key}')">Download & Apply Update</button>`;
+                diffContainer.innerHTML = html;
+            }
+        } else {
+            diffContainer.innerHTML = `<div class="diff-error">Error: ${result.error}</div>`;
+        }
+    } catch (err) {
+        diffContainer.innerHTML = '<div class="diff-error">Failed to fetch diff</div>';
+    }
+}
+
+async function syncDownload(key) {
+    try {
+        const response = await fetch('/api/sync-download', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key })
+        });
+        const result = await response.json();
+        if (!result.success) alert('Error: ' + result.error);
+    } catch (err) {
+        alert('Failed to sync download');
+    }
+}
+
 async function browseFile() {
     const filePath = await window.electronAPI.selectFile();
     if (filePath) {

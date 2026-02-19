@@ -58,6 +58,36 @@ export async function startServer() {
         res.json(manager.getTorrents())
     })
 
+    app.post('/api/sync-seed', async (req, res) => {
+        try {
+            const { key } = req.body
+            await manager.syncSeed(key)
+            res.json({ success: true })
+        } catch (err) {
+            res.status(500).json({ success: false, error: err.message })
+        }
+    })
+
+    app.post('/api/sync-download', async (req, res) => {
+        try {
+            const { key } = req.body
+            await manager.syncDownload(key)
+            res.json({ success: true })
+        } catch (err) {
+            res.status(500).json({ success: false, error: err.message })
+        }
+    })
+
+    app.get('/api/sync-diff', async (req, res) => {
+        try {
+            const { key } = req.query
+            const diff = await manager.getSyncDiff(key)
+            res.json({ success: true, diff })
+        } catch (err) {
+            res.status(500).json({ success: false, error: err.message })
+        }
+    })
+
     app.post('/api/remove', async (req, res) => {
         try {
             const { key } = req.body
