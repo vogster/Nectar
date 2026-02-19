@@ -96,17 +96,18 @@ function renderTorrents(torrents) {
       
       ${torrent.type === 'metadata-ready' ? `
         <div class="file-selection-list">
-          ${torrent.files.map(file => `
-            <div class="file-item">
-              <input type="checkbox" id="file-${torrent.key}-${file.path}" data-path="${file.path}" checked>
-              <label for="file-${torrent.key}-${file.path}" class="file-name">${file.path === '/file' ? (torrent.name || 'file') : file.path.slice(1)}</label>
-              <span class="file-size">${formatBytes(file.size)}</span>
-            </div>
-          `).join('')}
+          <div class="tree-root">
+            ${renderTreeHtml(buildFileTree(torrent.files), torrent.key, torrent.name)}
+          </div>
         </div>
-        <button class="btn-start-download" onclick="confirmDownload('${torrent.key}')">
-          Start Download
-        </button>
+        <div class="metadata-actions">
+           <button class="btn-cancel-download" onclick="handleRemove('${torrent.key}')">
+             <i class="fa-solid fa-xmark"></i> Cancel
+           </button>
+           <button class="btn-start-download" onclick="confirmDownload('${torrent.key}')">
+             <i class="fa-solid fa-download"></i> Start
+           </button>
+        </div>
       ` : ''}
 
       ${torrent.error ? `<div class="error" style="color: #ff4d4d; font-size: 0.8rem; margin-top: 10px;">${torrent.error}</div>` : ''}
@@ -119,6 +120,102 @@ function renderTorrents(torrents) {
     cards.forEach(card => {
         if (!currentKeys.includes(card.id)) card.remove();
     });
+}
+
+// Tree view helper: builds a nested object from flat paths
+function buildFileTree(files) {
+    const root = {};
+    files.forEach(file => {
+        // Remove leading slash if exists
+        const pathParts = (file.path.startsWith('/') ? file.path.slice(1) : file.path).split('/');
+        let current = root;
+        pathParts.forEach((part, index) => {
+            if (!current[part]) {
+                current[part] = index === pathParts.length - 1 ? { _file: file } : {};
+            }
+            current = current[part];
+        });
+    });
+    return root;
+}
+
+// Recursively renders the file tree as HTML
+function renderTreeHtml(node, torrentKey, torrentName, currentPath = '') {
+    let html = '';
+    const entries = Object.entries(node);
+
+    // Sort directories first
+    entries.sort(([a, valA], [b, valB]) => {
+        const isDirA = !valA._file;
+        const isDirB = !valB._file;
+        if (isDirA && !isDirB) return -1;
+        if (!isDirA && isDirB) return 1;
+        return a.localeCompare(b);
+    });
+
+    entries.forEach(([name, value]) => {
+        const fullPath = currentPath + '/' + name;
+        if (value._file) {
+            // It's a file
+            const displayName = name === 'file' && currentPath === '' ? (torrentName || 'file') : name;
+            html += `
+                <div class="tree-node file-item">
+                    <input type="checkbox" id="file-${torrentKey}-${value._file.path}" data-path="${value._file.path}" checked>
+                    <label for="file-${torrentKey}-${value._file.path}" class="file-name">${displayName}</label>
+                    <span class="file-size">${formatBytes(value._file.size)}</span>
+                </div>
+            `;
+        } else {
+            // It's a directory
+            const dirId = `dir-${torrentKey}-${fullPath.replace(/\//g, '-')}`;
+            html += `
+                <div class="tree-node">
+                    <div class="folder-item" onclick="toggleFolderSelection('${torrentKey}', '${fullPath}', this)">
+                        <div class="folder-toggle" onclick="event.stopPropagation(); toggleFolderCollapse(this)">−</div>
+                        <i class="fa-solid fa-folder-open"></i>
+                        <input type="checkbox" id="${dirId}" checked onclick="event.stopPropagation(); toggleFolderSelection('${torrentKey}', '${fullPath}', this.parentElement)">
+                        <span class="folder-name">${name}</span>
+                    </div>
+                    <div class="folder-content" data-path="${fullPath}">
+                        ${renderTreeHtml(value, torrentKey, torrentName, fullPath)}
+                    </div>
+                </div>
+            `;
+        }
+    });
+    return html;
+}
+
+function toggleFolderSelection(torrentKey, folderPath, folderEl) {
+    const checkbox = folderEl.querySelector('input[type="checkbox"]');
+    // If called from onclick of the div, toggle checkbox state first
+    if (event.target !== checkbox && !event.target.classList.contains('folder-toggle')) {
+        checkbox.checked = !checkbox.checked;
+    }
+
+    const isChecked = checkbox.checked;
+    const content = folderEl.nextElementSibling;
+
+    // Find all checkboxes within this folder and set their state
+    const subCheckboxes = content.querySelectorAll('input[type="checkbox"]');
+    subCheckboxes.forEach(cb => cb.checked = isChecked);
+}
+
+function toggleFolderCollapse(toggleEl) {
+    const folderItem = toggleEl.parentElement;
+    const content = folderItem.nextElementSibling;
+    const isCollapsed = content.classList.toggle('collapsed');
+    toggleEl.textContent = isCollapsed ? '+' : '−';
+
+    // Update folder icon
+    const icon = folderItem.querySelector('i');
+    if (isCollapsed) {
+        icon.classList.remove('fa-folder-open');
+        icon.classList.add('fa-folder');
+    } else {
+        icon.classList.remove('fa-folder');
+        icon.classList.add('fa-folder-open');
+    }
 }
 
 function copyKey(key) {

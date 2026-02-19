@@ -364,19 +364,110 @@ input:focus {
 .file-item .file-size {
   color: var(--text-secondary);
   font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+/* Tree View Styles */
+.tree-node {
+  margin-left: 20px;
+}
+
+.tree-root>.tree-node {
+  margin-left: 0;
+}
+
+.folder-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--accent-blue);
+  cursor: pointer;
+}
+
+.folder-item:hover {
+  background: rgba(0, 242, 255, 0.05);
+}
+
+.folder-item i {
+  font-size: 0.8rem;
+}
+
+.folder-toggle {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: transform 0.2s ease;
+  font-family: monospace;
+  font-size: 1.2rem;
+  border-radius: 4px;
+}
+
+.folder-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--accent-blue);
+}
+
+.folder-content.collapsed {
+  display: none;
+}
+
+.folder-item input[type="checkbox"] {
+  width: auto;
+  margin-bottom: 0;
+  accent-color: var(--accent-blue);
+}
+
+.metadata-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 15px;
 }
 
 .btn-start-download {
   width: 100%;
-  margin-top: 15px;
-  padding: 10px;
+  padding: 12px;
   background: var(--accent-blue);
   color: black;
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-cancel-download {
+  width: 100%;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-cancel-download:hover {
+  background: rgba(255, 77, 77, 0.1);
+  color: #ff4d4d;
+  border-color: rgba(255, 77, 77, 0.3);
 }
 
 .btn-start-download:hover {
