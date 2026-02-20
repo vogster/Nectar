@@ -18,6 +18,14 @@
           <i class="fa-solid fa-list-ul"></i>
           Transfers
         </li>
+        <li onclick="openModal('ratings')">
+          <i class="fa-solid fa-star"></i>
+          Ratings
+        </li>
+        <li id="nav-search" onclick="showSearchView()">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          Search
+        </li>
       </ul>
     </nav>
   </aside>
@@ -26,6 +34,9 @@
     <header>
       <h1 id="view-title">Active Transfers</h1>
       <div class="header-actions" style="display: flex; gap: 12px;">
+        <button class="btn-secondary" onclick="openModal('settings')" title="Settings">
+          <i class="fa-solid fa-gear"></i>
+        </button>
         <button class="btn-secondary" onclick="openModal('download')">
           <i class="fa-solid fa-key"></i> Add via Key
         </button>
@@ -41,6 +52,26 @@
         style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 4rem;">
         <i class="fa-solid fa-cloud-arrow-down" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
         <p>No active transfers. Seed a file to get started.</p>
+      </div>
+    </div>
+
+    <!-- Search View (hidden by default) -->
+    <div id="search-view" style="display: none;">
+      <div class="search-container" style="margin-bottom: 2rem;">
+        <div style="display: flex; gap: 12px;">
+          <input type="text" id="search-input" placeholder="Search files across the network..."
+            style="margin-bottom: 0; flex: 1;">
+          <button class="btn-primary" onclick="handleSearch()" style="white-space: nowrap;">
+            <i class="fa-solid fa-magnifying-glass"></i> Search
+          </button>
+        </div>
+      </div>
+      <div id="search-results" class="torrent-grid">
+        <div class="empty-state"
+          style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 4rem;">
+          <i class="fa-solid fa-earth-americas" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+          <p>Find content shared by other peers.</p>
+        </div>
       </div>
     </div>
   </main>
@@ -76,9 +107,19 @@
         </div>
         <div class="modal-actions" style="margin-top: 1.5rem;">
           <button class="btn-secondary" onclick="closeModal('seed')">Cancel</button>
-          <button class="btn-primary" onclick="handleSeed()">Start Seeding</button>
+          <button class="btn-primary" id="btn-seed" onclick="handleSeed()">Start Seeding</button>
         </div>
       </div>
+
+      <!-- Loading State -->
+      <div id="seed-loading" style="display: none; text-align: center; padding: 2rem 0;">
+        <i class="fa-solid fa-spinner fa-spin"
+          style="font-size: 3rem; color: var(--accent-blue); margin-bottom: 1.5rem;"></i>
+        <h3 style="margin-bottom: 0.5rem;">Creating Torrent...</h3>
+        <p style="color: var(--text-secondary);">Preparing files and calculating metadata. This may take a while for
+          large files.</p>
+      </div>
+
       <div id="seed-result"
         style="display: none; background: rgba(0, 242, 255, 0.05); padding: 1.5rem; border-radius: 12px; margin-top: 1.5rem; border: 1px solid rgba(0, 242, 255, 0.2);">
         <p style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--accent-blue);">Success! Share this key:</p>
@@ -103,6 +144,275 @@
       <div class="modal-actions">
         <button class="btn-secondary" onclick="closeModal('download')">Cancel</button>
         <button class="btn-primary" onclick="handleDownload()">Start Download</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="modal-settings" class="modal">
+    <div class="modal-content" style="max-width: 600px;">
+      <h2><i class="fa-solid fa-gear"></i> Settings</h2>
+
+      <div class="settings-tabs">
+        <button class="settings-tab active" data-tab="general">General</button>
+        <button class="settings-tab" data-tab="network">Network</button>
+        <button class="settings-tab" data-tab="limits">Limits</button>
+        <button class="settings-tab" data-tab="ui">UI</button>
+      </div>
+
+      <div class="settings-content">
+        <!-- General Tab -->
+        <div id="settings-general" class="settings-tab-content active">
+          <div class="setting-item">
+            <label>
+              <i class="fa-solid fa-folder-download"></i>
+              Default Download Path
+            </label>
+            <div style="display: flex; gap: 10px;">
+              <input type="text" id="setting-download-path" placeholder="./downloads">
+              <button class="btn-secondary" onclick="browseDownloadPath()" style="height: 45px;">
+                <i class="fa-solid fa-folder-open"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="setting-item">
+            <label>
+              <i class="fa-solid fa-folder"></i>
+              Seed Storage Path
+            </label>
+            <input type="text" id="setting-seed-path" placeholder="./nectar-data">
+          </div>
+
+          <div class="setting-item">
+            <label>
+              <i class="fa-solid fa-play"></i>
+              Auto-start Downloads
+            </label>
+            <label class="switch">
+              <input type="checkbox" id="setting-auto-start">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Network Tab -->
+        <div id="settings-network" class="settings-tab-content">
+          <div class="setting-item">
+            <label>
+              <i class="fa-solid fa-network-wired"></i>
+              Server Port
+            </label>
+            <input type="number" id="setting-port" min="1024" max="65535" value="3000">
+          </div>
+
+          <div class="setting-item">
+            <label>
+              <i class="fa-solid fa-users"></i>
+              Max Connections
+            </label>
+            <input type="number" id="setting-max-connections" min="1" max="1000" value="100">
+          </div>
+
+          <div class="setting-item">
+            <label>
+              <i class="fa-solid fa-globe"></i>
+              Enable DHT
+            </label>
+            <label class="switch">
+              <input type="checkbox" id="setting-enable-dht">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Limits Tab -->
+        <div id="settings-limits" class="settings-tab-content">
+          <div class="setting-item">
+            <label>
+              <i class="fa-solid fa-download"></i>
+              Max Download Speed (MB/s)
+            </label>
+            <input type="number" id="setting-max-download" min="0" value="0" placeholder="0 = unlimited">
+            <small style="color: var(--text-secondary);">0 = unlimited</small>
+          </div>
+
+          <div class="setting-item">
+            <label>
+              <i class="fa-solid fa-upload"></i>
+              Max Upload Speed (MB/s)
+            </label>
+            <input type="number" id="setting-max-upload" min="0" value="0" placeholder="0 = unlimited">
+            <small style="color: var(--text-secondary);">0 = unlimited</small>
+          </div>
+
+          <div class="setting-item">
+            <label>
+              <i class="fa-solid fa-layer-group"></i>
+              Max Concurrent Downloads
+            </label>
+            <input type="number" id="setting-max-concurrent" min="1" max="10" value="3">
+          </div>
+        </div>
+
+        <!-- UI Tab -->
+        <div id="settings-ui" class="settings-tab-content">
+          <div class="setting-item">
+            <label>
+              <i class="fa-solid fa-palette"></i>
+              Theme
+            </label>
+            <select id="setting-theme">
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </div>
+
+          <div class="setting-item">
+            <label>
+              <i class="fa-solid fa-bell"></i>
+              Notify on Download Complete
+            </label>
+            <label class="switch">
+              <input type="checkbox" id="setting-notify-download">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <label>
+              <i class="fa-solid fa-user-plus"></i>
+              Notify on Peer Connect
+            </label>
+            <label class="switch">
+              <input type="checkbox" id="setting-notify-peer">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="margin-top: 1.5rem;">
+        <button class="btn-secondary" onclick="resetSettings()">
+          <i class="fa-solid fa-rotate-left"></i> Reset to Defaults
+        </button>
+        <div style="flex: 1;"></div>
+        <button class="btn-secondary" onclick="closeModal('settings')">Cancel</button>
+        <button class="btn-primary" onclick="saveSettings()">
+          <i class="fa-solid fa-check"></i> Save Settings
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ratings Modal -->
+  <div id="modal-ratings" class="modal">
+    <div class="modal-content" style="max-width: 900px; max-height: 80vh; overflow-y: auto;">
+      <h2><i class="fa-solid fa-star"></i> Peer Ratings</h2>
+
+      <div class="ratings-header"
+        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <div class="ratings-stats" id="ratings-stats">
+          <span><i class="fa-solid fa-users"></i> <span id="total-peers">0</span> peers rated</span>
+          <span><i class="fa-solid fa-pen"></i> <span id="total-ratings">0</span> ratings</span>
+        </div>
+        <button class="btn-secondary" onclick="exportRatings()">
+          <i class="fa-solid fa-download"></i> Export
+        </button>
+      </div>
+
+      <div class="ratings-tabs">
+        <button class="ratings-tab active" data-tab="top">
+          <i class="fa-solid fa-trophy"></i> Top Peers
+        </button>
+        <button class="ratings-tab" data-tab="all">
+          <i class="fa-solid fa-list"></i> All Ratings
+        </button>
+        <button class="ratings-tab" data-tab="rate">
+          <i class="fa-solid fa-star"></i> Rate Peer
+        </button>
+      </div>
+
+      <div class="ratings-content">
+        <!-- Top Peers Tab -->
+        <div id="ratings-top" class="ratings-tab-content active">
+          <div id="top-peers-list" class="peers-list">
+            <div class="empty-state" style="padding: 3rem; text-align: center;">
+              <i class="fa-solid fa-trophy" style="font-size: 3rem; opacity: 0.3; margin-bottom: 1rem;"></i>
+              <p>No ratings yet. Start rating peers after downloads!</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- All Ratings Tab -->
+        <div id="ratings-all" class="ratings-tab-content">
+          <div id="all-ratings-list" class="peers-list">
+            <div class="empty-state" style="padding: 3rem; text-align: center;">
+              <i class="fa-solid fa-list" style="font-size: 3rem; opacity: 0.3; margin-bottom: 1rem;"></i>
+              <p>No ratings stored</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Rate Peer Tab -->
+        <div id="ratings-rate" class="ratings-tab-content">
+          <div class="rate-peer-form">
+            <div class="setting-item">
+              <label>
+                <i class="fa-solid fa-key"></i>
+                Peer Key
+              </label>
+              <input type="text" id="rate-peer-key" placeholder="Enter 64-character peer key">
+            </div>
+
+            <div class="setting-item">
+              <label>
+                <i class="fa-solid fa-gauge"></i>
+                Speed Rating
+              </label>
+              <div class="star-rating-input" id="speed-rating">
+                <i class="fa-regular fa-star" data-value="1"></i>
+                <i class="fa-regular fa-star" data-value="2"></i>
+                <i class="fa-regular fa-star" data-value="3"></i>
+                <i class="fa-regular fa-star" data-value="4"></i>
+                <i class="fa-regular fa-star" data-value="5"></i>
+              </div>
+              <input type="hidden" id="speed-value" value="0">
+            </div>
+
+            <div class="setting-item">
+              <label>
+                <i class="fa-solid fa-shield"></i>
+                Reliability Rating
+              </label>
+              <div class="star-rating-input" id="reliability-rating">
+                <i class="fa-regular fa-star" data-value="1"></i>
+                <i class="fa-regular fa-star" data-value="2"></i>
+                <i class="fa-regular fa-star" data-value="3"></i>
+                <i class="fa-regular fa-star" data-value="4"></i>
+                <i class="fa-regular fa-star" data-value="5"></i>
+              </div>
+              <input type="hidden" id="reliability-value" value="0">
+            </div>
+
+            <div class="setting-item">
+              <label>
+                <i class="fa-solid fa-comment"></i>
+                Comment (optional)
+              </label>
+              <textarea id="rate-comment" placeholder="Share your experience..." rows="3"
+                style="width: 100%; padding: 12px; background: var(--surface-color); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-primary); resize: vertical;"></textarea>
+            </div>
+
+            <button class="btn-primary" onclick="submitRating()" style="width: 100%;">
+              <i class="fa-solid fa-paper-plane"></i> Submit Rating
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="margin-top: 1.5rem;">
+        <button class="btn-secondary" onclick="closeModal('ratings')">Close</button>
       </div>
     </div>
   </div>

@@ -58,7 +58,7 @@ async function downloadAll(drive, saveDir) {
   let downloadedFiles = 0
 
   console.log('[Download] Сканирование файлов...')
-  
+
   // Сначала получаем список всех файлов
   const entries = []
   for await (const entry of drive.list()) {
@@ -85,7 +85,7 @@ async function downloadAll(drive, saveDir) {
     // Убираем ведущий слэш и создаём путь
     const filePath = entry.key.startsWith('/') ? entry.key.slice(1) : entry.key
     const fullPath = path.join(saveDir, filePath)
-    
+
     // Создаём родительские директории
     const dir = path.dirname(fullPath)
     if (!fs.existsSync(dir)) {
@@ -93,7 +93,7 @@ async function downloadAll(drive, saveDir) {
     }
 
     console.log(`[Download] ${++downloadedFiles}/${totalFiles}: ${filePath}`)
-    
+
     const readStream = drive.createReadStream(entry.key)
     const writeStream = fs.createWriteStream(fullPath)
     await pipeline(readStream, writeStream)
@@ -105,7 +105,7 @@ async function downloadAll(drive, saveDir) {
 // Рекурсивная загрузка всех файлов из директории в Hyperdrive
 async function seedDirectory(drive, sourceDir) {
   const files = []
-  
+
   console.log('[Seed] Сканирование директории...')
   for await (const file of walkDir(sourceDir)) {
     files.push(file)
@@ -124,14 +124,14 @@ async function seedDirectory(drive, sourceDir) {
   for (const { fullPath, relativePath } of files) {
     // Используем относительный путь с ведущим слэшем
     const drivePath = '/' + relativePath.replace(/\\/g, '/')
-    
+
     const stat = fs.statSync(fullPath)
     console.log(`[Seed] ${++uploaded}/${files.length}: ${relativePath} (${(stat.size / 1024).toFixed(1)} KB)`)
 
     const readStream = fs.createReadStream(fullPath)
     const writeStream = drive.createWriteStream(drivePath)
     await pipeline(readStream, writeStream)
-    
+
     uploadedSize += stat.size
     const progress = ((uploadedSize / totalSize) * 100).toFixed(1)
     console.log(`[Seed] Прогресс: ${progress}%`)
@@ -177,7 +177,7 @@ async function main() {
 
     const sourcePath = arg
     const customName = nameArg && !/^[0-9a-f]{64}$/i.test(nameArg) ? nameArg : null
-    
+
     if (!sourcePath) {
       console.error('Укажите путь к файлу или директории: node index.js /path/to/file-or-dir [name]')
       process.exit(1)
@@ -207,20 +207,20 @@ async function main() {
     const stat = fs.statSync(sourcePath)
     const torrentName = customName || path.basename(sourcePath)
 
-    // Записываем метаданные и ждём завершения
-    console.log(`[Seed] Writing metadata...`)
-    const metadata = {
+    // Записываем манифест и ждём завершения
+    console.log(`[Seed] Writing manifest...`)
+    const manifest = {
       name: torrentName,
       sourceType: stat.isDirectory() ? 'directory' : 'file',
       sourceName: path.basename(sourcePath),
       createdAt: new Date().toISOString()
     }
     await new Promise((resolve, reject) => {
-      const metadataStream = drive.createWriteStream('/.metadata.json')
-      metadataStream.on('finish', resolve)
-      metadataStream.on('error', reject)
-      metadataStream.write(JSON.stringify(metadata, null, 2))
-      metadataStream.end()
+      const manifestStream = drive.createWriteStream('/manifest.json')
+      manifestStream.on('finish', resolve)
+      manifestStream.on('error', reject)
+      manifestStream.write(JSON.stringify(manifest, null, 2))
+      manifestStream.end()
     })
 
     if (stat.isDirectory()) {
@@ -243,7 +243,7 @@ async function main() {
     console.log('\nОжидаю подключения скачивающих... (Ctrl+C для выхода)')
 
     // Держим процесс живым для раздачи
-    await new Promise(() => {})
+    await new Promise(() => { })
 
   } else {
     // -------------------------
@@ -291,12 +291,13 @@ async function main() {
       return
     }
 
-    // Читаем метаданные
+    // Читаем метаданные (сначала манифест, потом старые метаданные)
     let metadata = null
     try {
-      const metadataEntry = await drive.entry('/.metadata.json')
+      const manifestPath = await drive.entry('/manifest.json') ? '/manifest.json' : '/.metadata.json'
+      const metadataEntry = await drive.entry(manifestPath)
       if (metadataEntry) {
-        const metadataStream = drive.createReadStream('/.metadata.json')
+        const metadataStream = drive.createReadStream(manifestPath)
         const metadataChunks = []
         for await (const chunk of metadataStream) {
           metadataChunks.push(chunk)
@@ -309,8 +310,8 @@ async function main() {
     }
 
     // Определяем, что это: один файл или директория
-    // Исключаем .metadata.json из списка
-    const contentEntries = entries.filter(e => e.key !== '/.metadata.json')
+    // Исключаем манифесты из списка
+    const contentEntries = entries.filter(e => e.key !== '/.metadata.json' && e.key !== '/manifest.json')
     const hasMultipleFiles = contentEntries.length > 1
     const hasRootFile = contentEntries.some(e => e.key === '/file')
 
